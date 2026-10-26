@@ -48,7 +48,7 @@
     return api.runtime.sendMessage({
       type: "report", pageId, score: current.score,
       pip: [...videos].some(video => core.inPip(video, document)),
-      hidden: document.hidden, state: lastState, pending: status.pending
+      hidden: document.hidden, state: lastState, pending: status.pending, suppressed: status.suppressed
     }).catch(() => {});
   }
 

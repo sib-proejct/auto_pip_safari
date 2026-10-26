@@ -115,3 +115,27 @@ test("HTTP pages initialize and coordinate PiP without crypto.randomUUID", async
   f.changeTab(1);
   assert.equal(video.webkitPresentationMode, "inline");
 });
+
+test("closing PiP prevents another iframe from reopening it until a tab revisit", async () => {
+  const f = fixture();
+  const main = f.addPage(0);
+  const embedded = f.addPage(7, { paused: true });
+  await tick();
+  f.changeTab(2);
+  await tick();
+  assert.equal(main.video.webkitPresentationMode, "picture-in-picture");
+  main.video.webkitSetPresentationMode("inline");
+  main.video.paused = true;
+  main.video.dispatchEvent(new Event("pause"));
+  embedded.video.paused = false;
+  embedded.video.dispatchEvent(new Event("playing"));
+  await tick(180);
+  assert.equal(embedded.video.webkitPresentationMode, "inline");
+
+  f.changeTab(1);
+  await tick();
+  f.changeTab(2);
+  await tick();
+  assert.equal(embedded.video.webkitPresentationMode, "picture-in-picture");
+  f.changeTab(1);
+});

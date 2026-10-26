@@ -92,6 +92,33 @@ test("simultaneous hidden tabs reserve one PiP owner", async () => {
   assert.equal(f.entries().length, 1);
 });
 
+test("closing automatic PiP suppresses all frames until the tab is revisited", async () => {
+  const f = fixture();
+  f.report(1, 0);
+  await tick();
+  f.report(1, 0, { score: -1, state: "dismissed", suppressed: true });
+  f.report(1, 7, { score: 900 });
+  await tick();
+  assert.equal(f.entries().length, 1);
+
+  f.api.tabs.onActivated.emit({ tabId: 1, windowId: 1 });
+  f.report(1, 0, { score: -1, state: "dismissed", suppressed: false, hidden: false });
+  f.api.tabs.onActivated.emit({ tabId: 2, windowId: 1 });
+  f.report(1, 7, { score: 900 });
+  await tick();
+  assert.equal(f.entries().length, 2);
+  assert.equal(f.entries()[1].options.frameId, 7);
+});
+
+test("navigation clears tab-wide dismissal suppression", async () => {
+  const f = fixture();
+  f.report(1, 0, { state: "dismissed", suppressed: true });
+  f.api.tabs.onUpdated.emit(1, { status: "loading" });
+  f.report(1, 0, { pageId: "new-page" });
+  await tick();
+  assert.equal(f.entries().length, 1);
+});
+
 test("top-level site exclusion applies to embedded players", async () => {
   const f = fixture();
   await f.message({ type: "update-settings", host: "www.youtube.com", siteEnabled: false });

@@ -7,6 +7,7 @@ const frames = new Map();
 const activeTabs = new Map();
 const jobs = new Map();
 const revisions = new Map();
+const suppressedTabs = new Set();
 let settings = S.normalize();
 let owner = null;
 let storageQueue = Promise.resolve();
@@ -35,6 +36,7 @@ async function contextFor(tabId) {
 }
 
 function scheduleEntry(tabId) {
+  if (suppressedTabs.has(tabId)) return;
   if (jobs.has(tabId)) return jobs.get(tabId);
   const revision = revisions.get(tabId) || 0;
   const job = (async () => {
@@ -42,6 +44,7 @@ function scheduleEntry(tabId) {
     await new Promise(resolve => setTimeout(resolve, settings.delayMs));
     if ((revisions.get(tabId) || 0) !== revision) return;
     const context = await contextFor(tabId);
+    if (suppressedTabs.has(tabId) || (revisions.get(tabId) || 0) !== revision) return;
     if (!context || context.tab.active || !S.allowed(settings, context.host)) return;
     // A report from any frame also protects manually opened PiP in another tab.
     if (owner || [...frames.values()].some(tabFrames => [...tabFrames.values()].some(frame => frame.pip))) return;
@@ -95,6 +98,11 @@ api.runtime.onMessage.addListener((message, sender) => {
     });
     if (owner?.tabId === tabId && owner.frameId === frameId && owner.pageId === message.pageId
         && owner.confirmed && !message.pip && !message.pending) owner = null;
+    if (!message.hidden) suppressedTabs.delete(tabId);
+    else if (message.state === "dismissed" && message.suppressed && !suppressedTabs.has(tabId)) {
+      suppressedTabs.add(tabId);
+      invalidate(tabId);
+    }
     if (message.hidden) void scheduleEntry(tabId);
     return Promise.resolve({ ok: true });
   }
@@ -153,6 +161,7 @@ api.runtime.onMessage.addListener((message, sender) => {
 
 api.tabs.onActivated.addListener(({ tabId, windowId }) => {
   invalidate(tabId);
+  suppressedTabs.delete(tabId);
   const previous = activeTabs.get(windowId);
   activeTabs.set(windowId, tabId);
   // Content-script visibility reports cover the first switch after a background restart.
@@ -162,6 +171,7 @@ api.tabs.onActivated.addListener(({ tabId, windowId }) => {
 
 api.tabs.onRemoved.addListener(tabId => {
   invalidate(tabId);
+  suppressedTabs.delete(tabId);
   frames.delete(tabId);
   if (owner?.tabId === tabId) owner = null;
   for (const [windowId, id] of activeTabs) if (id === tabId) activeTabs.delete(windowId);
@@ -170,6 +180,7 @@ api.tabs.onRemoved.addListener(tabId => {
 api.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === "loading") {
     invalidate(tabId);
+    suppressedTabs.delete(tabId);
     frames.delete(tabId);
     if (owner?.tabId === tabId) owner = null;
   }
