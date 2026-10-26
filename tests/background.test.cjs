@@ -119,6 +119,27 @@ test("navigation clears tab-wide dismissal suppression", async () => {
   assert.equal(f.entries().length, 1);
 });
 
+test("settings updates wait for every known iframe to acknowledge", async () => {
+  const f = fixture();
+  f.report(2, 0, { hidden: false, score: -1 });
+  f.report(2, 7, { hidden: false, score: -1 });
+  let acknowledgeFrame;
+  const delivered = [];
+  f.api.tabs.sendMessage = async (id, message, options) => {
+    if (id !== 2 || message.type !== "settings") return;
+    delivered.push(options?.frameId);
+    if (options?.frameId === 7) await new Promise(resolve => { acknowledgeFrame = resolve; });
+  };
+  let saved = false;
+  const save = f.message({ type: "update-settings", patch: { includeMuted: true } }).then(() => { saved = true; });
+  await tick();
+  assert.deepEqual(delivered, [0, 7]);
+  assert.equal(saved, false);
+  acknowledgeFrame();
+  await save;
+  assert.equal(saved, true);
+});
+
 test("top-level site exclusion applies to embedded players", async () => {
   const f = fixture();
   await f.message({ type: "update-settings", host: "www.youtube.com", siteEnabled: false });

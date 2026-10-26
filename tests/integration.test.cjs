@@ -139,3 +139,37 @@ test("closing PiP prevents another iframe from reopening it until a tab revisit"
   assert.equal(embedded.video.webkitPresentationMode, "picture-in-picture");
   f.changeTab(1);
 });
+
+test("popup reloads muted iframe eligibility after its settings report completes", async () => {
+  const f = fixture();
+  f.addPage(0, { paused: true });
+  const embedded = f.addPage(7, { muted: true });
+  await tick();
+  const elements = new Map();
+  for (const id of ["status-text", "enabled", "enabled-label", "site-enabled", "site-host", "restore", "muted", "delay", "open-pip"]) {
+    const element = { handlers: {}, addEventListener(name, fn) { this.handlers[name] = fn; } };
+    elements.set(id, element);
+  }
+  const popup = vm.createContext({
+    browser: { runtime: { sendMessage: f.message } },
+    document: { getElementById: id => elements.get(id), querySelector: () => ({ classList: { toggle() {} } }) }
+  });
+  for (const file of ["shared.js", "popup.js"]) vm.runInContext(read(file), popup);
+  await tick();
+  const button = elements.get("open-pip");
+  assert.equal(button.disabled, true);
+
+  let releaseReport;
+  embedded.reportGate = new Promise(resolve => { releaseReport = resolve; });
+  const muted = elements.get("muted");
+  muted.checked = true;
+  muted.handlers.change({ target: muted });
+  await tick();
+  assert.equal(button.disabled, true);
+  releaseReport();
+  await tick();
+  assert.equal(button.disabled, false);
+  assert.match(elements.get("status-text").textContent, /준비됐어요/);
+  await button.handlers.click();
+  assert.equal(embedded.video.webkitPresentationMode, "picture-in-picture");
+});

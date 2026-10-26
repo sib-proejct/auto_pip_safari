@@ -71,9 +71,13 @@ function scheduleEntry(tabId) {
 
 async function broadcastSettings() {
   const tabs = await api.tabs.query({});
-  await Promise.allSettled(tabs.map(tab => api.tabs.sendMessage(tab.id, {
-    type: "settings", settings, host: S.hostname(tab.url)
-  })));
+  // A tab-wide send resolves after just one frame replies. Await every known frame's report.
+  await Promise.allSettled(tabs.flatMap(tab => {
+    const frameIds = [...(frames.get(tab.id)?.keys() || [0])];
+    return frameIds.map(frameId => send(tab.id, frameId, {
+      type: "settings", settings, host: S.hostname(tab.url)
+    }));
+  }));
 }
 
 api.runtime.onMessage.addListener((message, sender) => {

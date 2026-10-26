@@ -45,9 +45,8 @@ async function load() {
 
 async function save(message) {
   try {
-    const result = await api.runtime.sendMessage({ type: "update-settings", ...message });
-    current.settings = result.settings;
-    render();
+    await api.runtime.sendMessage({ type: "update-settings", ...message });
+    await load();
   } catch { status("설정을 저장하지 못했어요. 다시 시도해 주세요.", true); }
 }
 

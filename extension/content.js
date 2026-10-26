@@ -119,12 +119,12 @@
     settings = S.normalize(next);
     host = topHost || "";
     if (!S.allowed(settings, host)) { controller.restore(); hint?.remove(); }
-    report();
+    return report();
   }
 
   api.runtime.onMessage.addListener(message => {
     if (message?.type === "refresh") return report();
-    if (message?.type === "settings") { applySettings(message.settings, message.host); return; }
+    if (message?.type === "settings") return applySettings(message.settings, message.host);
     if (message?.type === "returned") {
       controller.setActive(!document.hidden, settings.restoreOnReturn);
       report();
