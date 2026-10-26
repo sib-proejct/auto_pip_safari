@@ -89,10 +89,10 @@
       hint = document.createElement("div");
       const shadow = hint.attachShadow({ mode: "closed" });
       const style = document.createElement("style");
-      style.textContent = `:host{all:initial;position:fixed;right:20px;bottom:20px;z-index:2147483647;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#f5f7ff}
-        .box{max-width:290px;padding:16px;background:#182139;border:1px solid #465374;border-radius:16px;box-shadow:0 8px 40px #0004}
-        p{margin:0 0 12px;line-height:1.6}button{font:inherit;border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#b9f279;color:#183210}
-        .close{margin-left:8px;background:#303b54;color:#fff}button:focus-visible{outline:2px solid #fff;outline-offset:3px}`;
+      style.textContent = `:host{all:initial;position:fixed;right:20px;bottom:20px;z-index:2147483647;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#f7f7f7}
+        .box{max-width:290px;padding:16px;background:#242424;border:1px solid #555555;border-radius:16px;box-shadow:0 8px 40px #0004}
+        p{margin:0 0 12px;line-height:1.6}button{font:inherit;border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#eeeeee;color:#222222}
+        .close{margin-left:8px;background:#444444;color:#fff}button:focus-visible{outline:2px solid #fff;outline-offset:3px}`;
       const box = document.createElement("div");
       box.className = "box";
       box.setAttribute("role", "status");
