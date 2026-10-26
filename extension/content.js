@@ -4,7 +4,9 @@
   const api = browser;
   const S = AutoPiPSettings;
   const core = AutoPiPCore;
-  const pageId = crypto.randomUUID();
+  // getRandomValues also works on HTTP pages, where randomUUID is unavailable.
+  const pageId = [...crypto.getRandomValues(new Uint8Array(16))]
+    .map(value => value.toString(16).padStart(2, "0")).join("");
   const videos = new Set();
   const observedRoots = new WeakSet();
   let settings = S.normalize({ enabled: false });
