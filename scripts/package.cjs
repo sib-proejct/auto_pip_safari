@@ -1,0 +1,10 @@
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "..");
+require("./check.cjs");
+fs.mkdirSync(path.join(root, "dist"), { recursive: true });
+const target = path.join(root, "dist/Auto-PiP-Safari.zip");
+fs.rmSync(target, { force: true });
+execFileSync("/usr/bin/ditto", ["-c", "-k", "--norsrc", path.join(root, "extension"), target]);
+console.log(`Created ${target}`);

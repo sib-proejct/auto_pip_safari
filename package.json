@@ -1,0 +1,13 @@
+{
+  "name": "auto-pip-safari",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automatic Picture in Picture when switching Safari tabs on macOS",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check": "node scripts/check.cjs",
+    "package": "node scripts/package.cjs",
+    "preview": "node scripts/preview.cjs",
+    "build:safari": "bash scripts/build-safari.sh"
+  }
+}

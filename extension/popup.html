@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Auto PiP</title>
+  <link rel="stylesheet" href="popup.css">
+  <script src="shared.js" defer></script>
+  <script src="popup.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon-64.png" width="40" height="40" alt="">
+      <div><h1>Auto PiP<span>SAFARI</span></h1><p>탭을 옮겨도, 영상은 그대로</p></div>
+    </header>
+    <section class="hero" aria-label="자동 PIP">
+      <div class="hero-top"><span class="eyebrow">작은 창, 끊김 없는 시청</span><span class="live-dot" id="live-dot"></span></div>
+      <div class="illustration" aria-hidden="true">
+        <div class="browser-window"><div class="browser-tabs"><i></i><i></i><b></b></div><div class="browser-lines"><i></i><i></i><i></i></div></div>
+        <div class="floating-video"><span>▶</span><div></div></div>
+        <span class="float-label">늘 곁에</span>
+      </div>
+      <label class="hero-switch" for="enabled"><span><strong>자동 PIP</strong><small id="enabled-label">설정을 불러오는 중…</small></span><input type="checkbox" id="enabled" role="switch" disabled><span class="switch" aria-hidden="true"></span></label>
+    </section>
+    <section class="settings" aria-label="설정">
+      <label class="setting site-row" for="site-enabled"><span><strong>이 사이트에서 사용</strong><small id="site-host">현재 사이트 확인 중…</small></span><input type="checkbox" id="site-enabled" role="switch" disabled><span class="switch" aria-hidden="true"></span></label>
+      <label class="setting" for="restore"><span><strong>돌아오면 원래 화면으로</strong><small>자동으로 열린 PIP 창을 복귀시켜요</small></span><input type="checkbox" id="restore" role="switch" disabled><span class="switch" aria-hidden="true"></span></label>
+      <label class="setting" for="muted"><span><strong>음소거 영상도 포함</strong><small>소리 없는 영상에도 자동 PIP 적용</small></span><input type="checkbox" id="muted" role="switch" disabled><span class="switch" aria-hidden="true"></span></label>
+      <label class="setting delay-row" for="delay"><span><strong>전환 대기 시간</strong></span><select id="delay" disabled><option value="0">바로</option><option value="150">0.15초</option><option value="400">0.4초</option><option value="800">0.8초</option></select></label>
+    </section>
+    <div class="status" role="status" aria-live="polite"><span id="status-dot"></span><p id="status-text">상태 확인 중…</p></div>
+    <button id="open-pip" disabled><span aria-hidden="true">↗</span> 지금 PIP로 열기</button>
+    <footer>외부 전송 없이, 이 Mac 안에서만.</footer>
+  </main>
+</body>
+</html>
