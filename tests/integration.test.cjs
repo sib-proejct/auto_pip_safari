@@ -74,15 +74,27 @@ function fixture(url = "https://video.example/watch") {
     for (const file of ["shared.js", "pip-core.js", "content.js"]) vm.runInContext(read(file), content);
     return page;
   }
-  function changeTab(id) {
+  function changeTab(id, notifyVisibility = true) {
     for (const tab of tabs.values()) tab.active = tab.id === id;
-    for (const page of pages.values()) page.doc.hidden = id !== 1;
+    if (notifyVisibility) for (const page of pages.values()) page.doc.hidden = id !== 1;
     void api.tabs.onActivated.send({ tabId: id, windowId: 1 });
-    for (const page of pages.values()) page.doc.dispatchEvent(new Event("visibilitychange"));
+    if (notifyVisibility) for (const page of pages.values()) page.doc.dispatchEvent(new Event("visibilitychange"));
   }
   const message = value => api.runtime.onMessage.send(value, { id: api.runtime.id });
   return { addPage, changeTab, message };
 }
+
+test("first tab switch opens PiP even before Safari delivers visibilitychange", async () => {
+  const f = fixture();
+  const { video } = f.addPage(0);
+  await tick();
+  f.changeTab(2, false);
+  await tick();
+  assert.equal(video.webkitPresentationMode, "picture-in-picture");
+  f.changeTab(1);
+  await tick();
+  assert.equal(video.webkitPresentationMode, "inline");
+});
 
 test("background and real content scripts coordinate a tab switch, restore, and site exclusion", async () => {
   const { addPage, changeTab, message } = fixture();

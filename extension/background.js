@@ -15,6 +15,9 @@ const ready = api.storage.local.get("settings").then(async result => {
   settings = S.normalize(result.settings);
   // MV3 may unload this background page. Rebuild PiP ownership from live frames.
   const tabs = await api.tabs.query({});
+  for (const tab of tabs) {
+    if (tab.active && !activeTabs.has(tab.windowId)) activeTabs.set(tab.windowId, tab.id);
+  }
   await Promise.allSettled(tabs.map(tab => api.tabs.sendMessage(tab.id, { type: "refresh" })));
 }).catch(() => {});
 
@@ -46,6 +49,11 @@ function scheduleEntry(tabId) {
     const context = await contextFor(tabId);
     if (suppressedTabs.has(tabId) || (revisions.get(tabId) || 0) !== revision) return;
     if (!context || context.tab.active || !S.allowed(settings, context.host)) return;
+    // Visibility notifications can be delayed in background Safari tabs. Refresh
+    // candidates explicitly rather than relying on an old playback report.
+    await Promise.allSettled([...(frames.get(tabId)?.keys() || [])].map(frameId =>
+      send(tabId, frameId, { type: "refresh" })));
+    if (suppressedTabs.has(tabId) || (revisions.get(tabId) || 0) !== revision) return;
     // A report from any frame also protects manually opened PiP in another tab.
     if (owner || [...frames.values()].some(tabFrames => [...tabFrames.values()].some(frame => frame.pip))) return;
     const candidates = [...(frames.get(tabId) || new Map()).entries()]
@@ -58,7 +66,7 @@ function scheduleEntry(tabId) {
     owner = reservation;
     const result = await send(tabId, frameId, {
       type: "enter", pageId: frame.pageId, automatic: true,
-      restoreOnReturn: settings.restoreOnReturn
+      restoreOnReturn: settings.restoreOnReturn, tabActive: false
     });
     if (owner === reservation) {
       reservation.confirmed = true;

@@ -131,7 +131,10 @@
       return;
     }
     if (message?.type === "enter" && message.pageId === pageId) {
-      controller.setActive(!document.hidden, settings.restoreOnReturn);
+      // Background has verified tabs.get().active. Safari may not yet have
+      // delivered visibilitychange to this document.
+      controller.setActive(message.automatic && message.tabActive === false ? false : !document.hidden,
+        settings.restoreOnReturn);
       return controller.enter({ automatic: message.automatic, restoreOnReturn: settings.restoreOnReturn });
     }
   });
