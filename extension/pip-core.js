@@ -34,6 +34,7 @@
     let active = !doc.hidden;
     let owned = null;
     let pending = null;
+    let exiting = null;
     let suppressed = false;
     let state = "ready";
     const watched = new WeakSet();
@@ -45,21 +46,41 @@
     }
 
     function exit(video) {
-      if (!inPip(video, doc)) return;
+      if (!inPip(video, doc)) { inspect(video); return; }
+      if (exiting?.video === video) return;
+      const interval = Math.min(100, timeoutMs);
+      const attempt = { video, timer: null, remaining: Math.ceil(timeoutMs / interval), inFlight: false };
+      exiting = attempt;
       expectedExits.add(video);
-      try {
-        if (video.webkitPresentationMode === PIP && typeof video.webkitSetPresentationMode === "function") {
-          video.webkitSetPresentationMode("inline");
-        } else if (doc.pictureInPictureElement === video) {
-          Promise.resolve(doc.exitPictureInPicture()).catch(() => {
-            expectedExits.delete(video);
-            publish("exit-blocked");
-          });
-        }
-      } catch {
+
+      function fail() {
+        if (exiting !== attempt) return;
+        clearTimeout(attempt.timer);
+        exiting = null;
         expectedExits.delete(video);
         publish("exit-blocked");
       }
+
+      function retry() {
+        if (exiting !== attempt) return;
+        if (!inPip(video, doc)) { inspect(video); return; }
+        if (attempt.remaining-- <= 0) { fail(); return; }
+        try {
+          // Safari silently ignores inline requests during its native opening animation.
+          if (video.webkitPresentationMode === PIP && typeof video.webkitSetPresentationMode === "function") {
+            video.webkitSetPresentationMode("inline");
+          } else if (doc.pictureInPictureElement === video && !attempt.inFlight) {
+            attempt.inFlight = true;
+            Promise.resolve(doc.exitPictureInPicture()).then(() => {
+              attempt.inFlight = false;
+              if (exiting === attempt && !inPip(video, doc)) inspect(video);
+            }, fail);
+          }
+          if (!inPip(video, doc)) inspect(video);
+          if (exiting === attempt) attempt.timer = setTimeout(retry, interval);
+        } catch { fail(); }
+      }
+      retry();
     }
 
     function inspect(video) {
@@ -77,6 +98,10 @@
           attempt.resolve({ ok: true, pip: inPip(video, doc) });
         }
         return;
+      }
+      if (exiting?.video === video) {
+        clearTimeout(exiting.timer);
+        exiting = null;
       }
       if (owned === video) {
         owned = null;
@@ -100,7 +125,7 @@
     function enter({ automatic = true, restoreOnReturn = true } = {}) {
       if (!isAllowed()) return Promise.resolve({ ok: false, reason: "disabled" });
       if (automatic && (active || suppressed)) return Promise.resolve({ ok: false, reason: "inactive-required" });
-      if (pending || owned) return Promise.resolve({ ok: false, reason: "busy" });
+      if (pending || owned || exiting) return Promise.resolve({ ok: false, reason: "busy" });
       const video = chooseVideo();
       if (!video || inPip(video, doc)) return Promise.resolve({ ok: false, reason: "no-video" });
       watch(video);

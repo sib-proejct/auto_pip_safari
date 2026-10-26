@@ -68,6 +68,65 @@ test("return during native opening animation exits once opening completes", asyn
   assert.deepEqual(video.calls, ["picture-in-picture", "inline"]);
 });
 
+test("retries an inline request ignored during Safari's opening animation", async () => {
+  const video = new Video();
+  let animating = true;
+  video.webkitSetPresentationMode = function (mode) {
+    this.calls.push(mode);
+    if (mode !== "inline" || !animating) this.settle(mode);
+  };
+  const { controller } = fixture(video, { timeoutMs: 500 });
+  await controller.enter();
+  controller.setActive(true);
+  assert.equal(video.webkitPresentationMode, "picture-in-picture");
+  animating = false;
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert.equal(video.webkitPresentationMode, "inline");
+  assert.equal(controller.getState().owned, false);
+  assert.equal(controller.getState().suppressed, false);
+
+  // Completed restore retries must not close a subsequent manual PiP session.
+  await controller.enter({ automatic: false });
+  const calls = video.calls.length;
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert.equal(video.calls.length, calls);
+  assert.equal(video.webkitPresentationMode, "picture-in-picture");
+});
+
+test("silently refused exits stop retrying and report failure", async () => {
+  const { video, controller } = fixture();
+  await controller.enter();
+  video.disabled = true;
+  controller.setActive(true);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(controller.getState().state, "exit-blocked");
+  const calls = video.calls.length;
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(video.calls.length, calls);
+  assert.equal(video.webkitPresentationMode, "picture-in-picture");
+});
+
+test("exit verification never overlaps standard PiP exit requests", async () => {
+  const { video, doc, controller } = fixture(undefined, { timeoutMs: 500 });
+  video.webkitSetPresentationMode = undefined;
+  video.requestPictureInPicture = async () => { doc.pictureInPictureElement = video; };
+  let finishExit;
+  let exitCalls = 0;
+  doc.exitPictureInPicture = () => {
+    exitCalls++;
+    return new Promise(resolve => { finishExit = resolve; });
+  };
+  await controller.enter();
+  controller.setActive(true);
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert.equal(exitCalls, 1);
+  doc.pictureInPictureElement = null;
+  finishExit();
+  await Promise.resolve();
+  assert.equal(controller.getState().owned, false);
+  assert.equal(controller.getState().state, "ready");
+});
+
 test("disabling during native opening prevents an orphaned PiP", async () => {
   const video = new Video({ autoSettle: false });
   const { controller, disable } = fixture(video);
